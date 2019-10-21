@@ -17,7 +17,7 @@
 #include "connection.hpp"
 #include "connection_manager.hpp"
 #include "request_handler.hpp"
-#include "jpeg_stream.hpp"
+#include "jpeg_streams.h"
 
 namespace http {
 namespace server {
@@ -32,9 +32,7 @@ public:
   /// Construct the server to listen on the specified TCP address and port, and
   /// serve up files from the given directory.
   explicit server(const std::string& address, const std::string& port,
-      const std::string& doc_root);
-
-  void register_stream(jpeg_stream *stream, int &id);
+      const std::string& doc_root, jpeg_streams &streams);
 
   /// Run the server's io_context loop.
   void run();
@@ -61,8 +59,7 @@ private:
 
   /// The handler for all incoming requests.
   request_handler request_handler_;
-  
-  std::vector<jpeg_stream *> streams_;
+   
 };
 
 } // namespace server

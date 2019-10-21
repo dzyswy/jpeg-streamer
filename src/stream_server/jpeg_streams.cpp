@@ -27,7 +27,23 @@ void jpeg_stream::add_header(const std::string key)
 	headers_.insert(make_pair(key, value));
 }
 
+int jpeg_stream::check_watch()
+{
+	std::unique_lock<std::mutex> lock(mux_);
+	return watch_;
+}
 
+void jpeg_stream::watch_inc()
+{
+	std::unique_lock<std::mutex> lock(mux_);
+	watch_++;
+}
+ 
+void jpeg_stream::watch_dec()
+{
+	std::unique_lock<std::mutex> lock(mux_);
+	watch_--;
+}
 
 void jpeg_stream::post_frame(int frame_count)
 {
@@ -92,7 +108,11 @@ int jpeg_stream::get_header(const std::string key, std::string &value)
 	return 0;
 }
 
-
+std::map<std::string, std::string> jpeg_stream::get_headers()
+{
+	std::unique_lock<std::mutex> lock(mux_);
+	return headers_;
+}
 
 
 
@@ -124,6 +144,29 @@ int jpeg_streams::add_header(int channel, const std::string key)
 	return 0;
 }
 
+int jpeg_streams::check_watch(int channel)
+{
+	if (channel >= streams_.size())
+		return -1;
+	return streams_[channel].check_watch();
+}
+
+int jpeg_streams::watch_inc(int channel)
+{
+	if (channel >= streams_.size())
+		return -1;
+	streams_[channel].watch_inc();
+	return 0;
+}
+ 
+int jpeg_streams::watch_dec(int channel)
+{
+	if (channel >= streams_.size())
+		return -1;
+	streams_[channel].watch_dec();
+	return 0;
+}
+
 
 void jpeg_streams::post_frame(int channel, int frame_count)
 {
@@ -148,8 +191,7 @@ int jpeg_streams::set_header(int channel, const std::string key, std::string &va
 	if (channel >= streams_.size())
 		return -1;
 	
-	streams_[channel].set_header(key, value);
-	return 0;
+	return streams_[channel].set_header(key, value);
 }
 
 
@@ -158,8 +200,7 @@ int jpeg_streams::query_frame(int channel, int timeout)
 	if (channel >= streams_.size())
 		return -1;
 	
-	streams_[channel].query_frame(timeout);
-	return 0;
+	return streams_[channel].query_frame(timeout); 
 }
 
 void jpeg_streams::get_image(int channel, std::vector<unsigned char> &image)
@@ -194,12 +235,18 @@ int jpeg_streams::get_header(int channel, const std::string key, std::string &va
 	if (channel >= streams_.size())
 		return -1;
 	
-	streams_[channel].get_header(key, value);
-	return 0;
+	return streams_[channel].get_header(key, value);
 }
 
 
-
+int jpeg_streams::get_headers(int channel, std::map<std::string, std::string> &value)
+{
+	if (channel >= streams_.size())
+		return -1;
+	
+	value = streams_[channel].get_headers();
+	return 0;
+}
 
 
 

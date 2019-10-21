@@ -13,7 +13,7 @@
 
 #include <string>
 #include <vector>
-#include "jpeg_stream.hpp"
+#include "jpeg_streams.h"
 
 namespace http {
 namespace server {
@@ -29,19 +29,19 @@ public:
   request_handler& operator=(const request_handler&) = delete;
 
   /// Construct with a directory containing files to be served.
-  explicit request_handler(const std::string& doc_root, std::vector<jpeg_stream *>& streams);
+  explicit request_handler(const std::string& doc_root, jpeg_streams& streams);
 
 
   /// Handle a request and produce a reply.
-  void handle_request(const request& req, reply& rep, int &id);
+  void handle_request(const request& req, reply& rep, int &channel);
   void handle_boundary(reply& rep);
-  int handle_stream(int id, reply& rep);
+  int handle_stream(int channel, reply& rep);
   
 
 private:
   /// The directory containing the files to be served.
   std::string doc_root_;
-  std::vector<jpeg_stream *>& streams_;
+  jpeg_streams& streams_;
 
   /// Perform URL-decoding on a string. Returns false if the encoding was
   /// invalid.

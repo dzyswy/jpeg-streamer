@@ -16,12 +16,12 @@ namespace http {
 namespace server {
 
 server::server(const std::string& address, const std::string& port,
-    const std::string& doc_root)
+    const std::string& doc_root, jpeg_streams &streams)
   : io_context_(1),
     signals_(io_context_),
     acceptor_(io_context_),
     connection_manager_(),
-    request_handler_(doc_root, streams_)
+    request_handler_(doc_root, streams)
 {
   // Register to handle the signals that indicate when the server should exit.
   // It is safe to register for the same signal multiple times in a program,
@@ -32,7 +32,6 @@ server::server(const std::string& address, const std::string& port,
   signals_.add(SIGQUIT);
 #endif // defined(SIGQUIT)
 */
-  streams_.clear();
 
 //  do_await_stop();
 
@@ -46,12 +45,6 @@ server::server(const std::string& address, const std::string& port,
   acceptor_.listen();
 
   do_accept();
-}
-
-void server::register_stream(jpeg_stream *stream, int &id)
-{
-	id = streams_.size();
-	streams_.push_back(stream);
 }
 
 void server::run()

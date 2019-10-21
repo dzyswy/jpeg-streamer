@@ -22,8 +22,7 @@ connection::connection(asio::ip::tcp::socket socket,
     connection_manager& manager, request_handler& handler)
   : socket_(std::move(socket)),
     connection_manager_(manager),
-    request_handler_(handler),
-	stream_id_(0)
+    request_handler_(handler)
 {
 	std::cout << "create new connection\n";
 }
@@ -52,11 +51,12 @@ void connection::do_read()
 
           if (result == request_parser::good)
           {
-            request_handler_.handle_request(request_, reply_, stream_id_);
+			int channel = 0;
+            request_handler_.handle_request(request_, reply_, channel);
 			if (reply_.status != reply::ok) {
 			  do_write();
 			} else {
-				do_response();
+				do_response(channel);
 			}
             
           }
@@ -98,7 +98,7 @@ void connection::do_write()
       });
 }
 
-void connection::do_response()
+void connection::do_response(int channel)
 {
   auto self(shared_from_this());
   asio::async_write(socket_, reply_.to_buffers(),
@@ -106,7 +106,7 @@ void connection::do_response()
       {
         if (!ec)
         {
-          do_boundary();
+          do_boundary(channel);
         }
 
         if (ec && (ec != asio::error::operation_aborted))
@@ -116,7 +116,7 @@ void connection::do_response()
       });
 } 
 
-void connection::do_boundary()
+void connection::do_boundary(int channel)
 {
 //	std::cout << "do_boundary\n";
 	
@@ -127,7 +127,7 @@ void connection::do_boundary()
 	  {
 		if (!ec)
 		{
-		  do_stream();
+		  do_stream(channel);
 		}
 		
 		if (ec && (ec != asio::error::operation_aborted))
@@ -138,11 +138,11 @@ void connection::do_boundary()
 	  });
 }
 
-void connection::do_stream()
+void connection::do_stream(int channel)
 {
 //	std::cout << "do_stream\n";
 	
-	int ret = request_handler_.handle_stream(stream_id_, reply_);
+	int ret = request_handler_.handle_stream(channel, reply_);
 	if (ret < 0)
 	{
 	  std::cout << "no more image, close connect\n";
@@ -155,7 +155,7 @@ void connection::do_stream()
 	  {
 		if (!ec)
 		{
-		  do_boundary();
+		  do_boundary(channel);
 		}
 		
 		if (ec && (ec != asio::error::operation_aborted))

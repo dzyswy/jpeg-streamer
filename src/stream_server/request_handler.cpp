@@ -20,84 +20,84 @@
 
 #define BOUNDARYSTRING "--BOUNDARYSTRING\r\n"
 
-
+using namespace std;
 
 namespace http {
 namespace server {
 
-request_handler::request_handler(const std::string& doc_root, std::vector<jpeg_stream *>& streams)
+request_handler::request_handler(const std::string& doc_root, jpeg_streams& streams)
   : doc_root_(doc_root),
     streams_(streams)
 {
 }
 
 
-void request_handler::handle_request(const request& req, reply& rep, int &id)
+void request_handler::handle_request(const request& req, reply& rep, int &channel)
 {
-  // Decode url to path.
-  std::string request_path;
-  if (!url_decode(req.uri, request_path))
-  {
-    rep = reply::stock_reply(reply::bad_request);
-    return;
-  }
-   
-  id = atoi(request_path.substr(1, request_path.length() - 1).c_str());
-  if (id >= streams_.size()) 
-  {
-	rep = reply::stock_reply(reply::not_found);
-    return;  
-  }  
-    
-  rep.status = reply::ok;
-  rep.headers.clear();
-  rep.content.clear();
-  rep.headers.push_back(header("Connection", "close"));
-  rep.headers.push_back(header("Max-Age", "0"));
-  rep.headers.push_back(header("Expires", "0"));
-  rep.headers.push_back(header("Cache-Control", "no-cache"));
-  rep.headers.push_back(header("Pragma", "no-cache"));
-  rep.headers.push_back(header("Content-Type", "multipart/x-mixed-replace; boundary=" BOUNDARYSTRING));
+	// Decode url to path.
+	std::string request_path;
+	if (!url_decode(req.uri, request_path))
+	{
+		rep = reply::stock_reply(reply::bad_request);
+		return;
+	}
+
+	string schannel = request_path.substr(1, request_path.length() - 1);
+	channel = atoi(schannel.c_str());
+	if (channel >= streams_.size()) 
+	{
+		rep = reply::stock_reply(reply::not_found);
+		return;  
+	}  
+
+	rep.status = reply::ok;
+	rep.headers.clear();
+	rep.content.clear();
+	rep.headers.push_back(header("Connection", "close"));
+	rep.headers.push_back(header("Max-Age", "0"));
+	rep.headers.push_back(header("Expires", "0"));
+	rep.headers.push_back(header("Cache-Control", "no-cache"));
+	rep.headers.push_back(header("Pragma", "no-cache"));
+	rep.headers.push_back(header("Content-Type", "multipart/x-mixed-replace; boundary=" BOUNDARYSTRING));
 
 }
 
 void request_handler::handle_boundary(reply& rep)
 {
-  rep.status = reply::ok;
-  rep.headers.clear();
-  rep.content.clear();
-  rep.content = BOUNDARYSTRING;
+	rep.status = reply::ok;
+	rep.headers.clear();
+	rep.content.clear();
+	rep.content = BOUNDARYSTRING;
 }
 
-int request_handler::handle_stream(int id, reply& rep)
+int request_handler::handle_stream(int channel, reply& rep)
 {
-	jpeg_stream *stream = streams_[id];
-	std::string detect_boxes, gyro_angle, frame_count_s;
-	int frame_count = 0;
-
-	stream->watch_inc();
-	int ret = stream->query_frame(10);
+	streams_->watch_inc(channel);
+	int ret = streams_->query_frame(channel, 10);
 	if (ret < 0)
-	{
-	  return -1;
-	}	
+		return -1;
+	
 	
 	rep.status = reply::ok;
 	rep.headers.clear();
 	rep.content.clear(); 
-	stream->get_image(rep.content);
-	stream->get_detect_boxes(detect_boxes);
-	stream->get_gyro_angle(gyro_angle);
-	stream->get_frame_count(frame_count);
-	frame_count_s = std::to_string(frame_count);
+	
+	streams_->get_image(channel, rep.content);
+	std::string frame_count_s = "0";
+	std::map<std::string, std::string> stream_headers; 
+	streams_->get_frame_count(channel, frame_count_s);
+	streams_->get_headers(channel, stream_headers);
 
 	rep.headers.push_back(header("Content-type", "image/jpeg"));
 	rep.headers.push_back(header("Content-Length", std::to_string(rep.content.size())));
-//	std::cout << rep.content.size() << std::endl;
 	rep.headers.push_back(header("Content-frame-count", frame_count_s));
-	rep.headers.push_back(header("Content-detect-boxes", detect_boxes));
-	rep.headers.push_back(header("Content-gyro-angle", gyro_angle));
-	stream->watch_dec();
+	
+	for (auto it = stream_headers.begin(); it != stream_headers.end(); ++it) 
+	{
+		rep.headers.push_back(header(it->first, it->second));
+	}	
+	
+	streams_->watch_dec(channel);
 	return 0;
 }
 

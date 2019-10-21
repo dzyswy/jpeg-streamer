@@ -49,11 +49,11 @@ private:
   /// Perform an asynchronous write operation.
   void do_write();
   
-  void do_response();
+  void do_response(int channel);
   
-  void do_boundary();
+  void do_boundary(int channel);
   
-  void do_stream();
+  void do_stream(int channel);
 
   /// Socket for the connection.
   asio::ip::tcp::socket socket_;
@@ -76,7 +76,6 @@ private:
   /// The reply to be sent back to the client.
   reply reply_;
   
-  int stream_id_;
 };
 
 typedef std::shared_ptr<connection> connection_ptr;
